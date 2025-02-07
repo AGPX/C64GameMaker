@@ -1,0 +1,25 @@
+name: Delete Comments with Attachments
+
+on:
+  issue_comment:
+    types: [created, edited]  # Controlla sia i nuovi commenti che le modifiche
+
+jobs:
+  check_attachments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for Attachments in Comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMENT_BODY=$(jq -r '.comment.body' $GITHUB_EVENT_PATH)
+
+          # Verifica se ci sono immagini o file allegati (es. `![alt](URL)`)
+          if echo "$COMMENT_BODY" | grep -Eo '!\[.*\]\((https?:\/\/[^)]*)\)'; then
+            COMMENT_ID=$(jq -r '.comment.id' $GITHUB_EVENT_PATH)
+            curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+            echo "⚠️ Comment with attachment deleted."
+          else
+            echo "✅ No attachment detected."
+          fi
